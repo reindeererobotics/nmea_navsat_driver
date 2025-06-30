@@ -257,11 +257,21 @@ class Ros2NMEADriver(Node):
                 current_vel.twist.linear.y = data['speed'] * math.cos(data['true_course'])
                 self.vel_pub.publish(current_vel)
 
-                if current_vel.twist.linear.x > 0.25 : # Only publish course from RMC if moving faster than 0.25 m/s
+                # Converting Surveying convention[clockwise(+)] to Mathematical convention[counterclockwise(+)]
+                # Bearing is with respect to North and is in the range of 0-360 degrees
+                bearing = (-data['true_course'] + (math.pi * 2)) % (math.pi * 2)
+                
+                # Convert angle to -180 -> 180 range: if data['true_course'] > 180: heading = data['true_course'] - 360 else: heading = data['true_course']
+                if(bearing > math.pi):
+                    heading = bearing - (math.pi * 2)
+                else:
+                    heading = bearing
+
+                if math.fabs(data['speed']) >= 0.25 : # Only publish course from RMC if moving faster than 0.25 m/s
                     current_heading = QuaternionStamped()
                     current_heading.header.stamp = current_time
                     current_heading.header.frame_id = frame_id
-                    q = quaternion_from_euler(0, 0, data['true_course'])
+                    q = quaternion_from_euler(0, 0, heading) # data['true_course'])
                     current_heading.quaternion.x = q[0]
                     current_heading.quaternion.y = q[1]
                     current_heading.quaternion.z = q[2]
